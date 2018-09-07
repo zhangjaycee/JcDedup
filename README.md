@@ -1,2 +1,12 @@
 # JcDedup
-all about deduplication
+
+This project is under developing ...
+
+I plan to implement a serials of user-space deduplication tools.
+
+
+Some code was borrowed from:
+
+- libbloom: https://github.com/jvirkki/libbloom
+
+- lazy-dedup: https://github.com/mjwtom/lazy-dedupe-serial
