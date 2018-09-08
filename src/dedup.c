@@ -11,18 +11,20 @@ by Zhang Jc
 #include "chunk_dedup.h"
 #include "bloom.h"
 #include "chunking.h"
+#include "hash-table.h"
 
 struct bloom bloom;
-
-struct Stat {
-    int dup_counter;
-    int unique_counter;
-} st;
+struct HashTable ht;
+struct Stat st;
 
 void init_stat()
 {
     st.dup_counter = 0;
     st.unique_counter = 0;
+    st.dup_size = 0;
+    st.unique_size = 0;
+    st.bf_counter = 0;
+    st.ht_counter = 0;
 }
 
 int buffer_dedupper(uchar *buf, size_t len)
@@ -39,7 +41,13 @@ int buffer_dedupper(uchar *buf, size_t len)
 #endif
         INFO_DETAIL("\t%d Bytes Chunked", this_chunk_len);
         status = chunk_dedupper(buf + chunked_len, this_chunk_len);
-        if (status) st.dup_counter++; else st.unique_counter++;
+        if (status) {
+            st.dup_counter++;
+            st.dup_size += this_chunk_len;
+        } else {
+            st.unique_counter++;
+            st.unique_size += this_chunk_len;
+        }
         chunked_len += this_chunk_len;
     }
     return 0;
@@ -61,8 +69,9 @@ int file_dedupper (int fd)
         read_len = read(fd, readbuf, READBUF_LEN);
         assert(read_len == READBUF_LEN || total_read_len + read_len == f_len );
         total_read_len += read_len;
-        INFO_DETAIL("file size: %d Bytes, already read len: %d Bytes", f_len, read_len);
         ret = buffer_dedupper(readbuf, read_len);
+        INFO("already read len: %d MB (dup: %d MB, unique: %d MB) [total: %d, bf: %d, ht: %d]", 
+            total_read_len/1024/1024, st.dup_size/1024/1024, st.unique_size/1024/1024, st.dup_counter + st.unique_counter,  st.bf_counter, st.ht_counter);
         assert(!ret);
     }
     INFO("\tdup chunks: %d, unique chunks: %d", st.dup_counter, st.unique_counter);
@@ -80,7 +89,7 @@ int openpath(uchar *path)
     return fd;
 }
 
-int dedupper(char *path)
+int path_dedupper(char *path)
 {
     int fd = openpath(path);
     struct stat f_stat;
@@ -104,7 +113,7 @@ int dedupper(char *path)
 				strcat(child_name, path);
 				strcat(child_name,"/");
 				strcat(child_name,entry->d_name);
-				dedupper(child_name);
+				path_dedupper(child_name);
 			}
 		}
     } else {
@@ -126,8 +135,9 @@ int main(int argc, char **argv)
 
     // init bloom filter
     init_stat();
-    bloom_init(&bloom, 1000000, 0.001);
-    int status = dedupper(argv[1]); 
+    bloom_init(&bloom, 10000000, 0.005);
+    hashtable_init(&ht);
+    int status = path_dedupper(argv[1]); 
     assert(!status);
     // dedup
     INFO("finished!");
