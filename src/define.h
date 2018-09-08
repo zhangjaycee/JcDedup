@@ -3,16 +3,17 @@
 
 typedef unsigned char uchar;
 
-
-
 // about fingerprint
 #define FP_LEN 20
 
-
 // about file and chunk
 #define READBUF_LEN 1024 * 1024
-#define CHUNK_LEN_MIN 2048 // the minimum chunk size
+#define CHUNK_LEN_MIN 512 // the minimum chunk size
 #define CHUNK_LEN_MAX 8096 // the minimum chunk size
+#define CHUNK_LEN_AVRG 4096 // the minimum chunk size
+//#define FIXED_SIZE_CHUNK
+#define ROLLING_WIN_LEN 48
+#define CHUNK_CDC_R 13
 
 #define LOG
 //#define DEBUG_LOG

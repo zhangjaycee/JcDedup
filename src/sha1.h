@@ -26,6 +26,8 @@
 /**
  * \brief          SHA-1 context structure
  */
+ #include <stdlib.h>
+ #include <string.h>
 typedef struct
 {
     unsigned long total[2];     /*!< number of bytes processed  */

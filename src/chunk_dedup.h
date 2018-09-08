@@ -4,6 +4,7 @@ by Zhang Jc
 2018.9.7
 **************/
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include "sha1.h"
 #include "define.h"
@@ -34,7 +35,7 @@ int fingerprinting(uchar *buf, int len, uchar *fp)
 
 int chunk_dedupper(uchar *buf, int len)
 {
-    uchar *fp = malloc(sizeof(uchar) * FP_LEN);
+    uchar *fp = (uchar *)malloc(sizeof(uchar) * FP_LEN);
     fingerprinting(buf, len, fp);
     if (filter(fp) && verify(buf, len)) {
         INFO_DETAIL("\t\t[duplicated] fp: %s chunk_len: %d", fp, len);
