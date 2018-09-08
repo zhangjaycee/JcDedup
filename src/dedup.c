@@ -6,6 +6,7 @@ by Zhang Jc
 #include <stdio.h>
 #include <assert.h>
 #include <fcntl.h>
+#include <dirent.h>
 #include "define.h"
 #include "chunk_dedup.h"
 #include "bloom.h"
@@ -54,7 +55,7 @@ int file_dedupper (int fd)
     ret = fstat(fd, &f_stat);
     assert(!ret);
     size_t f_len = f_stat.st_size;
-    INFO("file size: %d MB", f_len / 1024 / 1024);
+    INFO("\tfile size: %d MB", f_len / 1024 / 1024);
     // we are now reading the file
     while (total_read_len < f_len) {
         read_len = read(fd, readbuf, READBUF_LEN);
@@ -64,12 +65,12 @@ int file_dedupper (int fd)
         ret = buffer_dedupper(readbuf, read_len);
         assert(!ret);
     }
-    INFO("dup chunks: %d, unique chunks: %d", st.dup_counter, st.unique_counter);
+    INFO("\tdup chunks: %d, unique chunks: %d", st.dup_counter, st.unique_counter);
     return 0;
     
 }
 
-int openfile(uchar *path)
+int openpath(uchar *path)
 {
     int fd = open(path, O_RDONLY);
     if (fd < 1) {
@@ -79,24 +80,56 @@ int openfile(uchar *path)
     return fd;
 }
 
+int dedupper(char *path)
+{
+    int fd = openpath(path);
+    struct stat f_stat;
+    DIR *files;
+    struct dirent *entry;
+    int ret = fstat(fd, &f_stat);
+    assert(!ret);
+    if (S_ISDIR(f_stat.st_mode)) {
+        char child_name[1000];
+        files = opendir(path);
+		if(files == NULL)
+		{
+			printf("The dir may have no file!\n");
+			exit(1);;
+		}
+		while((entry = readdir(files)) != NULL)
+		{
+			if(strcmp(entry->d_name,"..")  != 0 && strcmp(entry->d_name, ".") != 0)
+			{
+				strcpy(child_name,"\0");
+				strcat(child_name, path);
+				strcat(child_name,"/");
+				strcat(child_name,entry->d_name);
+				dedupper(child_name);
+			}
+		}
+    } else {
+        INFO("To dedup file: %s", path);
+        file_dedupper(fd);
+    } 
+    return 0;
+     
+}
+
 
 int main(int argc, char **argv)
 {
     // open the file to dedup
     if (argc != 2) {
-        printf("usage: %s filename\n", argv[0]);
+        printf("usage: %s file_or_dir_path\n", argv[0]);
         exit(1);
     }
-    int fd = openfile(argv[1]);
 
     // init bloom filter
     init_stat();
     bloom_init(&bloom, 1000000, 0.001);
-    
-    // dedup
-    int status = file_dedupper(fd);
-
+    int status = dedupper(argv[1]); 
     assert(!status);
+    // dedup
     INFO("finished!");
     return 0;
 }
