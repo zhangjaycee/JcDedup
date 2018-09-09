@@ -37,7 +37,7 @@ void print_stat(struct Stat *st)
     INFO("\tfilter true:\t%d\tverify true: %d", st->bf_counter, st->ht_counter);
     print_timer(&st->io_timer, "file I/O time:");
     print_timer(&st->chunk_timer, "chunking time:");
-    print_timer(&st->fp_timer, "fingerprinting time:");
+    print_timer(&st->fp_timer, "fingerprint time:");
     print_timer(&st->filter_timer, "bloom filter time:");
     print_timer(&st->hash_timer, "FP lookup time:");
 }
