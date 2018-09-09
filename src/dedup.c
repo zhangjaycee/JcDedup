@@ -12,20 +12,10 @@ by Zhang Jc
 #include "bloom.h"
 #include "chunking.h"
 #include "hash-table.h"
+#include "utils.h"
 
 struct bloom bloom;
 struct HashTable ht;
-struct Stat st;
-
-void init_stat()
-{
-    st.dup_counter = 0;
-    st.unique_counter = 0;
-    st.dup_size = 0;
-    st.unique_size = 0;
-    st.bf_counter = 0;
-    st.ht_counter = 0;
-}
 
 int buffer_dedupper(uchar *buf, size_t len)
 {
@@ -34,11 +24,13 @@ int buffer_dedupper(uchar *buf, size_t len)
     int this_chunk_len;
     // we now are chunking the buffer
     while (chunked_len < len) {
+        S_TIMER(&st.chunk_timer);
 #ifdef FIXED_SIZE_CHUNK
         this_chunk_len = chunking_fixed(buf + chunked_len, len - chunked_len, CHUNK_LEN_MIN);
 #else
         this_chunk_len = chunking_rabin(buf + chunked_len, len - chunked_len, CHUNK_LEN_MIN, CHUNK_LEN_MAX, CHUNK_LEN_AVRG);
 #endif
+        E_TIMER(&st.chunk_timer);
         INFO_DETAIL("\t%d Bytes Chunked", this_chunk_len);
         status = chunk_dedupper(buf + chunked_len, this_chunk_len);
         if (status) {
@@ -66,7 +58,9 @@ int file_dedupper (int fd)
     INFO("\tfile size: %d MB", f_len / 1024 / 1024);
     // we are now reading the file
     while (total_read_len < f_len) {
+        S_TIMER(&st.io_timer);
         read_len = read(fd, readbuf, READBUF_LEN);
+        E_TIMER(&st.io_timer);
         assert(read_len == READBUF_LEN || total_read_len + read_len == f_len );
         total_read_len += read_len;
         ret = buffer_dedupper(readbuf, read_len);
@@ -74,7 +68,7 @@ int file_dedupper (int fd)
             total_read_len/1024/1024, st.dup_size/1024/1024, st.unique_size/1024/1024, st.dup_counter + st.unique_counter,  st.bf_counter, st.ht_counter);
         assert(!ret);
     }
-    INFO("\tdup chunks: %d, unique chunks: %d", st.dup_counter, st.unique_counter);
+    print_stat(&st);
     return 0;
     
 }
@@ -134,7 +128,7 @@ int main(int argc, char **argv)
     }
 
     // init bloom filter
-    init_stat();
+    init_stat(&st);
     bloom_init(&bloom, 10000000, 0.005);
     hashtable_init(&ht);
     int status = path_dedupper(argv[1]); 

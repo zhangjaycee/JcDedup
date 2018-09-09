@@ -3,7 +3,13 @@
 
 typedef unsigned char uchar;
 
+/*** for tests ***/
+// just use fixed size chunk (size = CHUNK_LEN_AVRG)
+//#define FIXED_SIZE_CHUNK
+// only use bloom filter, not use the FP hash table
+//#define ONLY_BF
 // about fingerprint
+
 #define FP_LEN 20
 
 // HASH_BUCKETS_SIZE is the fingerprint number of 1 bucket.
@@ -22,24 +28,18 @@ typedef unsigned char uchar;
 #define ROLLING_WIN_LEN 48
 #define CHUNK_CDC_R 13
 
-/*** for tests ***/
-// just use fixed size chunk (size = CHUNK_LEN_AVRG)
-//#define FIXED_SIZE_CHUNK
-// only use bloom filter, not use the FP hash table
-//#define ONLY_BF
-
-struct Stat {
-    int dup_counter;
-    int unique_counter;
-    size_t dup_size;
-    size_t unique_size;
-    int bf_counter;
-    int ht_counter;
-};
-
-
+// for debugging and profiling
+#define TIMER
 #define LOG
 //#define DEBUG_LOG
+
+#ifdef TIMER
+#define S_TIMER(...) s_timer(__VA_ARGS__)
+#define E_TIMER(...) e_timer(__VA_ARGS__)
+#else
+#define S_TIMER(...)
+#define E_TIMER(...)
+#endif
 
 #ifdef LOG
 #define INFO(...) \
